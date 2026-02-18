@@ -14,6 +14,7 @@ public class FormTest {
     static public String FIRST_NAME = "Anatolie";
     static public String LAST_NAME = "Sneg";
     static public String EMAIL = "example@gmail.com";
+    static public String GENDER = "Male";
 
     @BeforeMethod
     public void beforeMethod() {
@@ -29,9 +30,11 @@ public class FormTest {
         formPom.clickForms();
         formPom.pause(1000);
         formPom.clickPracticeForm();
+        formPom.closeAdvert();
         formPom.setFirstName(FIRST_NAME);
         formPom.setLastName(LAST_NAME);
         formPom.setEmail(EMAIL);
+        formPom.setGender(GENDER);
 
         System.out.println("Finish test");
 
