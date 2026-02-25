@@ -1,0 +1,79 @@
+name: 01_01_02_24_hello_world
+
+on:
+  push:
+    branches:
+      - main
+env:
+  TASK_FOLDER: "${{ github.workspace }}"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Pull selenoid container
+        run: |
+          # Pull the Docker images
+          docker pull selenoid/vnc_chrome:128.0
+          docker pull selenoid/video-recorder:latest-release
+
+      - name: Run selenoid in Docker container
+        run: |
+          # Run the program in a Docker container
+          docker compose -f docker-compose up -d
+
+      - name: Wait for container to start
+        run: sleep 5
+
+      - name: Wait selenoid status
+        run: |
+          timeout 30 bash -c 'until curl -f http://127.0.0.1:4444/status; do sleep 2; done'
+          echo "Selenoid is ready!"
+
+      - name: Build with Maven
+        run: mvn test
+
+      - name: Check video directory
+        if: always()
+        run: |
+          echo "Video directory contents:"
+          ls -lah ./video || echo "Video directory not found"
+
+      - name: Show Selenoid logs
+        if: always()
+        run: |
+          echo "Selenoid logs:"
+          docker logs demoqa-selenoid-1 | tail -50
+
+      - name: Uploading report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: ./target/surefire-reports/html
+
+      - name: Uploading video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: ./video
+
+      - name: Uploading logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: ./logs
+
+#      - name: Setup tmate session
+#        if: ${{ failure() }}
+#        uses: mxschmitt/action-tmate@v3.11

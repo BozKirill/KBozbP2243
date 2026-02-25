@@ -1,11 +1,10 @@
 package org.example.pom;
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.example.utils.Utils;
+import org.openqa.selenium.*;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 
 public class FormPom {
 
@@ -27,10 +26,72 @@ public class FormPom {
     @FindBy(xpath = "//*[@id='userEmail']")
     WebElement userEmail;
 
+    @FindBy(xpath = "//*[@id='userNumber']")
+    WebElement userNumber;
+
+    @FindBy(xpath = "//*[@id='dateOfBirthInput']")
+    WebElement dateOfBirthInput;
+
+    @FindBy(xpath = "//*[@id='subjectsInput']")
+    WebElement subjectsInput;
+
+    @FindBy(xpath = "//*[@id='state']")
+    WebElement state;
+
+    @FindBy(xpath = "//*[@id='city']")
+    WebElement city;
+
+    @FindBy(xpath = "//*[@id='submit']")
+    WebElement submit;
+
     public FormPom(WebDriver driverParam) {
         driver = driverParam;
         js = (JavascriptExecutor) driver;
         PageFactory.initElements(driver, this);
+    }
+
+    public String getTableDataByLabel(String labelParam) {
+        WebElement data = driver.findElement(By.xpath("//table//*[text()='" + labelParam  + "']/../*[2]"));
+        return data.getText();
+    }
+
+    public void clickSubmit() {
+        submit.click();
+    }
+
+    public void setCity(String cityParam) {
+        city.click();
+        WebElement ddSCity = city.findElement(By.xpath("//*[text()='" + cityParam  + "']"));
+        ddSCity.click();
+    }
+
+    public void setState(String stateParam) {
+        state.click();
+        WebElement ddState = state.findElement(By.xpath("//*[text()='" + stateParam  + "']"));
+//        Utils.explicitWait(driver, ExpectedConditions.elementToBeClickable(ddState), 10);
+        pause(1000);
+        ddState.click();
+    }
+
+    public void setHobby(String hobbyParam) {
+        WebElement hobby = driver.findElement(By.xpath("//*[@id='hobbiesWrapper']//label[text()='" + hobbyParam + "']/../input"));
+        hobby.sendKeys(" ");
+    }
+
+    public void setSubject(String subjectParam) {
+        subjectsInput.sendKeys(subjectParam);
+        subjectsInput.sendKeys(Keys.ENTER);
+    }
+
+    public void setDate(String dateParam) {
+        dateOfBirthInput.sendKeys(Keys.CONTROL, "a");
+        dateOfBirthInput.sendKeys(dateParam);
+        dateOfBirthInput.sendKeys(Keys.ENTER);
+    }
+
+    public void setNumber(String numberParam) {
+        userNumber.clear();
+        userNumber.sendKeys(numberParam);
     }
 
     public void setGender(String genderParam) {
@@ -54,6 +115,7 @@ public class FormPom {
     }
 
     public void clickPracticeForm() {
+        Utils.explicitWait(driver, ExpectedConditions.visibilityOf(practiceForm), 10);
         practiceForm.click();
     }
 
