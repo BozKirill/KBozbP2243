@@ -1,25 +1,34 @@
-version: '3'
+version: "3.8"
+
 services:
   selenoid:
-    network_mode: bridge
     image: aerokube/selenoid:latest-release
+    container_name: selenoid
+    ports:
+      - "4444:4444"
     volumes:
-      - "./config:/etc/selenoid"
+      - "./config:/etc/selenoid:ro"
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./video:/opt/selenoid/video"
       - "./logs:/opt/selenoid/logs"
-    environment:
-      - DOCKER_API_VERSION=1.45
-      - OVERRIDE_VIDEO_OUTPUT_DIR=$TASK_FOLDER/video
-    command: ["-conf", "/etc/selenoid/browsers.json", "-video-output-dir", "/opt/selenoid/video", "-log-output-dir", "/opt/selenoid/logs"]
-    shm_size: '2gb'
-    ports:
-      - "4444:4444"
+    command:
+      - "-conf"
+      - "/etc/selenoid/browsers.json"
+      - "-video-output-dir"
+      - "/opt/selenoid/video"
+      - "-log-output-dir"
+      - "/opt/selenoid/logs"
+      - "-timeout"
+      - "3m"
+    shm_size: "2gb"
+
   selenoid-ui:
-    image: "aerokube/selenoid-ui"
-    network_mode: bridge
-    links:
-      - selenoid
+    image: aerokube/selenoid-ui:latest-release
+    container_name: selenoid-ui
     ports:
       - "8080:8080"
-    command: ["--selenoid-uri", "http://selenoid:4444"]
+    command:
+      - "--selenoid-uri"
+      - "http://selenoid:4444"
+    depends_on:
+      - selenoid

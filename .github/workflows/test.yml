@@ -5,15 +5,11 @@ on:
     branches:
       - main
 
-env:
-  TASK_FOLDER: "${{ github.workspace }}"
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -24,82 +20,81 @@ jobs:
           java-version: '21'
           cache: 'maven'
 
-      - name: Pull selenoid containers
+      - name: Prepare folders (video/logs)
+        run: |
+          mkdir -p video logs
+          chmod -R 777 video logs || true
+          ls -lah
+
+      - name: Pull browser and video recorder images
         run: |
           docker pull selenoid/vnc_chrome:128.0
           docker pull selenoid/video-recorder:latest-release
+          docker pull aerokube/selenoid:latest-release
+          docker pull aerokube/selenoid-ui:latest-release
 
-      - name: Run selenoid in Docker container
+      - name: Run selenoid (docker compose)
         run: |
           docker compose -f docker-compose.yml up -d
-
-      - name: Wait for container to start
-        run: sleep 5
+          docker ps -a
 
       - name: Wait selenoid status
         run: |
-          timeout 60 bash -c 'until curl -f http://127.0.0.1:4444/status; do sleep 2; done'
+          timeout 90 bash -c 'until curl -fsS http://127.0.0.1:4444/status >/dev/null; do echo "waiting..."; sleep 2; done'
           echo "Selenoid is ready!"
 
       - name: Build with Maven
-        run: mvn test
+        run: mvn -e test
 
-      # -------------------------
-      # Copy video from container
-      # -------------------------
+      # --- Debug: show what selenoid has in /opt/selenoid/video ---
+      - name: Debug video folder inside selenoid
+        if: always()
+        run: |
+          echo "Inside container /opt/selenoid/video:"
+          docker ps
+          docker exec selenoid ls -lah /opt/selenoid/video || true
+          echo "Inside container /opt/selenoid/logs:"
+          docker exec selenoid ls -lah /opt/selenoid/logs || true
+
+      # Если видео не смонтировалось (или на всякий случай) — копируем из контейнера
       - name: Copy videos from selenoid
         if: always()
         run: |
           mkdir -p video
-          docker cp demoqa-selenoid-1:/opt/selenoid/video/. ./video || true
-          echo "Video directory contents:"
+          docker cp selenoid:/opt/selenoid/video/. ./video || true
+          echo "Video directory contents on runner:"
           ls -lah ./video || true
 
-      # -------------------------
-      # Copy logs from container
-      # -------------------------
       - name: Copy logs from selenoid
         if: always()
         run: |
           mkdir -p logs
-          docker cp demoqa-selenoid-1:/opt/selenoid/logs/. ./logs || true
-          echo "Logs directory contents:"
+          docker cp selenoid:/opt/selenoid/logs/. ./logs || true
+          echo "Logs directory contents on runner:"
           ls -lah ./logs || true
 
-      # -------------------------
-      # Show container logs
-      # -------------------------
       - name: Show Selenoid logs
         if: always()
         run: |
           echo "Selenoid logs:"
-          docker logs demoqa-selenoid-1 | tail -200
+          docker logs selenoid | tail -300 || true
 
-      # -------------------------
-      # Upload test report
-      # -------------------------
       - name: Uploading report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: report
-          path: ./target/surefire-reports/html
+          path: ./target/surefire-reports
           if-no-files-found: warn
 
-      # -------------------------
-      # Upload video
-      # -------------------------
       - name: Uploading video
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: video
-          path: ./video/*.mp4
+          path: ./video
           if-no-files-found: warn
 
-      # -------------------------
-      # Upload logs
-      # -------------------------
       - name: Uploading logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -107,7 +102,3 @@ jobs:
           name: logs
           path: ./logs
           if-no-files-found: warn
-
-#      - name: Setup tmate session
-#        if: ${{ failure() }}
-#        uses: mxschmitt/action-tmate@v3.11

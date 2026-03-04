@@ -4,7 +4,6 @@ import org.example.pom.FormPom;
 import org.example.utils.Driver;
 import org.openqa.selenium.WebDriver;
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -25,7 +24,7 @@ public class FormTest {
     public static final String SUBJECT = "Football";
     public static final String STATE = "Rajasthan";
     public static final String CITY = "Jaipur";
-    public static final String HOBBY = "Sports"; // нет Maths
+    public static final String HOBBY = "Sports"; // DemoQA: Sports / Reading / Music
 
     private static boolean isCI() {
         return "true".equalsIgnoreCase(System.getenv("CI")) ||
@@ -34,10 +33,14 @@ public class FormTest {
 
     @BeforeMethod
     public void beforeMethod() throws MalformedURLException {
+        // В CI хотим Remote (Selenoid) -> будет видео
+        // Локально можно Local
         if (isCI()) {
-            throw new SkipException("Skipping UI Selenium test in CI (GitHub Actions).");
+            driver = Driver.getRemoteOrLocalDriver(); // если remote упадет, возьмет local
+        } else {
+            driver = Driver.getAutoLocalDriver();
         }
-        driver = Driver.getAutoLocalDriver();
+
         driver.manage().window().maximize();
     }
 
@@ -69,6 +72,8 @@ public class FormTest {
 
     @AfterMethod
     public void afterMethod() {
-        if (driver != null) driver.quit();
+        if (driver != null) {
+            driver.quit();
+        }
     }
 }

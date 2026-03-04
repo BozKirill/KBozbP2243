@@ -1,7 +1,6 @@
 package org.example.utils;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
-import org.openqa.selenium.Platform;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -16,25 +15,24 @@ import java.util.*;
 public class Driver {
 
     // Можно переопределить через ENV:
-    // SELENOID_URL=http://192.168.0.10:4444/wd/hub
-    private static final String DEFAULT_SELENOID_URL = "http://localhost:4444/wd/hub";
-    private static final String SELENOID_URL =
+    // SELENOID_URL=http://127.0.0.1:4444/wd/hub
+    private static final String DEFAULT_SELENOID_URL = "http://127.0.0.1:4444/wd/hub";
+
+    private static final String RAW_SELENOID_URL =
             System.getenv().getOrDefault("SELENOID_URL", DEFAULT_SELENOID_URL);
 
-    // Автоматически определяем CI (GitHub Actions)
+    // Если вдруг дали URL без /wd/hub — добавим
+    private static final String SELENOID_URL =
+            (RAW_SELENOID_URL.endsWith("/wd/hub") || RAW_SELENOID_URL.endsWith("/"))
+                    ? RAW_SELENOID_URL.replaceAll("/+$", "") + (RAW_SELENOID_URL.endsWith("/wd/hub") ? "" : "/wd/hub")
+                    : RAW_SELENOID_URL + "/wd/hub";
+
     private static final boolean IS_CI =
             "true".equalsIgnoreCase(System.getenv("CI")) ||
                     "true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS"));
 
     public static WebDriver getAutoLocalDriver() {
         WebDriverManager.chromedriver().setup();
-        ChromeOptions options = buildLocalChromeOptions();
-        WebDriver driver = new ChromeDriver(options);
-        applyTimeouts(driver);
-        return driver;
-    }
-
-    public static WebDriver getLocalDriver() {
         ChromeOptions options = buildLocalChromeOptions();
         WebDriver driver = new ChromeDriver(options);
         applyTimeouts(driver);
@@ -64,11 +62,9 @@ public class Driver {
 
     private static ChromeOptions buildLocalChromeOptions() {
         ChromeOptions options = new ChromeOptions();
-
-        // Часто нужно для новых версий Chrome
         options.addArguments("--remote-allow-origins=*");
 
-        // В CI (Linux runner) обязательно headless + sandbox flags
+        // Для GitHub Actions / Linux runner
         if (IS_CI) {
             options.addArguments("--headless=new");
             options.addArguments("--no-sandbox");
@@ -76,23 +72,23 @@ public class Driver {
             options.addArguments("--disable-gpu");
             options.addArguments("--window-size=1920,1080");
         }
-
         return options;
     }
 
     private static ChromeOptions buildRemoteChromeOptions() {
         ChromeOptions options = new ChromeOptions();
 
-        // Если на Selenoid есть только конкретные версии — оставь
+        // версия должна совпадать с browsers.json и образом
         options.setBrowserVersion("128.0");
 
-        // Полезно для контейнеров
+        // аргументы для контейнера
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--disable-gpu");
+        options.addArguments("--window-size=1920,1080");
 
         Map<String, Object> selenoid = new HashMap<>();
-        selenoid.put("name", "Test badge...");
+        selenoid.put("name", "FormTest");                 // имя сессии
         selenoid.put("sessionTimeout", "15m");
         selenoid.put("env", Collections.singletonList("TZ=UTC"));
 
@@ -104,11 +100,14 @@ public class Driver {
         selenoid.put("enableVNC", true);
         selenoid.put("enableLog", true);
 
-        // на remote headless обычно ок
-        selenoid.put("headless", true);
+        // ВАЖНО: НЕ ставим headless в selenoid options.
+        // Видео-recorder стабильнее, когда браузер не headless.
+        // selenoid.put("headless", true);
+
+        // Чтобы видео называлось понятно (иначе sessionId)
+        selenoid.put("videoName", "FormTest.mp4");
 
         options.setCapability("selenoid:options", selenoid);
-
         return options;
     }
 
