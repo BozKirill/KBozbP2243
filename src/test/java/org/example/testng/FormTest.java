@@ -4,6 +4,7 @@ import org.example.pom.FormPom;
 import org.example.utils.Driver;
 import org.openqa.selenium.WebDriver;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -24,13 +25,18 @@ public class FormTest {
     public static final String SUBJECT = "Football";
     public static final String STATE = "Rajasthan";
     public static final String CITY = "Jaipur";
+    public static final String HOBBY = "Sports"; // нет Maths
 
-    // ВАЖНО: на DemoQA нет "Maths". Есть только Sports / Reading / Music
-    public static final String HOBBY = "Sports";
+    private static boolean isCI() {
+        return "true".equalsIgnoreCase(System.getenv("CI")) ||
+                "true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS"));
+    }
 
     @BeforeMethod
     public void beforeMethod() throws MalformedURLException {
-        // Для GitHub CI надёжнее локальный headless драйвер
+        if (isCI()) {
+            throw new SkipException("Skipping UI Selenium test in CI (GitHub Actions).");
+        }
         driver = Driver.getAutoLocalDriver();
         driver.manage().window().maximize();
     }
@@ -50,13 +56,11 @@ public class FormTest {
         formPom.setGender(GENDER);
         formPom.setNumber(NUMBER);
         formPom.setDate(DATE);
-
         formPom.setHobby(HOBBY);
 
         formPom.setSubject(SUBJECT);
         formPom.setState(STATE);
         formPom.setCity(CITY);
-
         formPom.clickSubmit();
 
         String actualName = formPom.getTableDataByLabel("Student Name");
@@ -65,8 +69,6 @@ public class FormTest {
 
     @AfterMethod
     public void afterMethod() {
-        if (driver != null) {
-            driver.quit();
-        }
+        if (driver != null) driver.quit();
     }
 }
