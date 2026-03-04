@@ -1,6 +1,7 @@
 package org.example.utils;
 
 import io.github.bonigarcia.wdm.WebDriverManager;
+import org.openqa.selenium.Platform;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -14,13 +15,16 @@ import java.util.*;
 
 public class Driver {
 
-    // Можно переопределить через переменную окружения:
+    // Можно переопределить через ENV:
     // SELENOID_URL=http://192.168.0.10:4444/wd/hub
     private static final String DEFAULT_SELENOID_URL = "http://localhost:4444/wd/hub";
-    private static final String SELENOID_URL = System.getenv().getOrDefault("SELENOID_URL", DEFAULT_SELENOID_URL);
+    private static final String SELENOID_URL =
+            System.getenv().getOrDefault("SELENOID_URL", DEFAULT_SELENOID_URL);
 
-    // Если не хочешь fallback на локал — поставь false
-    private static final boolean FALLBACK_TO_LOCAL = true;
+    // Автоматически определяем CI (GitHub Actions)
+    private static final boolean IS_CI =
+            "true".equalsIgnoreCase(System.getenv("CI")) ||
+                    "true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS"));
 
     public static WebDriver getAutoLocalDriver() {
         WebDriverManager.chromedriver().setup();
@@ -31,78 +35,58 @@ public class Driver {
     }
 
     public static WebDriver getLocalDriver() {
-        // Лучше так не делать, но оставляю твой метод рабочим
-        // Важно: путь должен быть до chromedriver.exe, а не до папки
-        // System.setProperty("webdriver.chrome.driver", "C:\\path\\to\\chromedriver.exe");
-
         ChromeOptions options = buildLocalChromeOptions();
         WebDriver driver = new ChromeDriver(options);
         applyTimeouts(driver);
         return driver;
     }
 
-    public static RemoteWebDriver getRemoteDriver() throws MalformedURLException {
-        ChromeOptions options = buildRemoteChromeOptions();
-
+    public static WebDriver getRemoteOrLocalDriver() throws MalformedURLException {
         try {
-            // Нормальный способ создать URL
-            URL gridUrl = URI.create(SELENOID_URL).toURL();
-            RemoteWebDriver driver = new RemoteWebDriver(gridUrl, options);
-            applyTimeouts(driver);
-            return driver;
-
+            return getRemoteDriver();
         } catch (Exception e) {
-            // Главное: у тебя сейчас падает CONNECT (сервер не отвечает)
-            if (!FALLBACK_TO_LOCAL) {
-                // пробрасываем как было, чтобы ты видел причину
-                if (e instanceof MalformedURLException) throw (MalformedURLException) e;
-                throw new RuntimeException("Cannot create remote session. Check SELENOID_URL=" + SELENOID_URL, e);
-            }
-
-            // Fallback на локальный Chrome, чтобы тесты могли запускаться
             System.err.println("Remote is not available: " + SELENOID_URL);
-            System.err.println("Falling back to LOCAL Chrome. Reason: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            return (RemoteWebDriver) null; // чтобы компилятор не ругался (не используется)
+            System.err.println("Falling back to LOCAL Chrome. Reason: " +
+                    e.getClass().getSimpleName() + " - " + e.getMessage());
+            return getAutoLocalDriver();
         }
     }
 
-    /**
-     * Удобный метод: пытается Remote, если не получилось — Local.
-     * Используй его в тесте вместо getRemoteDriver().
-     */
-    public static WebDriver getRemoteOrLocalDriver() throws MalformedURLException {
-        try {
-            ChromeOptions options = buildRemoteChromeOptions();
-            URL gridUrl = URI.create(SELENOID_URL).toURL();
-            RemoteWebDriver remote = new RemoteWebDriver(gridUrl, options);
-            applyTimeouts(remote);
-            return remote;
-        } catch (Exception e) {
-            if (!FALLBACK_TO_LOCAL) {
-                if (e instanceof MalformedURLException) throw (MalformedURLException) e;
-                throw new RuntimeException("Cannot create remote session. Check SELENOID_URL=" + SELENOID_URL, e);
-            }
-            System.err.println("Remote is not available: " + SELENOID_URL);
-            System.err.println("Falling back to LOCAL Chrome. Reason: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            return getAutoLocalDriver();
-        }
+    public static RemoteWebDriver getRemoteDriver() throws MalformedURLException {
+        ChromeOptions options = buildRemoteChromeOptions();
+        URL gridUrl = URI.create(SELENOID_URL).toURL();
+        RemoteWebDriver driver = new RemoteWebDriver(gridUrl, options);
+        applyTimeouts(driver);
+        return driver;
     }
 
     // ===== OPTIONS =====
 
     private static ChromeOptions buildLocalChromeOptions() {
         ChromeOptions options = new ChromeOptions();
+
+        // Часто нужно для новых версий Chrome
         options.addArguments("--remote-allow-origins=*");
+
+        // В CI (Linux runner) обязательно headless + sandbox flags
+        if (IS_CI) {
+            options.addArguments("--headless=new");
+            options.addArguments("--no-sandbox");
+            options.addArguments("--disable-dev-shm-usage");
+            options.addArguments("--disable-gpu");
+            options.addArguments("--window-size=1920,1080");
+        }
+
         return options;
     }
 
     private static ChromeOptions buildRemoteChromeOptions() {
         ChromeOptions options = new ChromeOptions();
 
-        // Selenium 4: правильнее так
+        // Если на Selenoid есть только конкретные версии — оставь
         options.setBrowserVersion("128.0");
 
-        // Важно для docker/selenoid
+        // Полезно для контейнеров
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--disable-gpu");
@@ -120,7 +104,7 @@ public class Driver {
         selenoid.put("enableVNC", true);
         selenoid.put("enableLog", true);
 
-        // headless можно убрать, если хочешь видеть браузер через VNC
+        // на remote headless обычно ок
         selenoid.put("headless", true);
 
         options.setCapability("selenoid:options", selenoid);
@@ -131,6 +115,6 @@ public class Driver {
     private static void applyTimeouts(WebDriver driver) {
         driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(60));
         driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(30));
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0)); // лучше explicit waits
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
     }
 }

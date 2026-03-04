@@ -13,6 +13,7 @@ import java.net.MalformedURLException;
 public class FormTest {
 
     public static WebDriver driver;
+
     public static final String URL = "https://demoqa.com/";
     public static final String FIRST_NAME = "kiril";
     public static final String LAST_NAME = "bozbeq";
@@ -24,20 +25,18 @@ public class FormTest {
     public static final String STATE = "Rajasthan";
     public static final String CITY = "Jaipur";
 
-    // ВАЖНО: на DemoQA нет "Maths". Есть только: Sports / Reading / Music
+    // ВАЖНО: на DemoQA нет "Maths". Есть только Sports / Reading / Music
     public static final String HOBBY = "Sports";
 
     @BeforeMethod
     public void beforeMethod() throws MalformedURLException {
-        // В CI чаще всего Remote недоступен -> используй local или fallback
-        // driver = Driver.getRemoteOrLocalDriver();
+        // Для GitHub CI надёжнее локальный headless драйвер
         driver = Driver.getAutoLocalDriver();
         driver.manage().window().maximize();
     }
 
     @Test
     public void formTest() {
-        System.out.println("Start test");
         driver.get(URL);
 
         FormPom formPom = new FormPom(driver);
@@ -57,17 +56,17 @@ public class FormTest {
         formPom.setSubject(SUBJECT);
         formPom.setState(STATE);
         formPom.setCity(CITY);
+
         formPom.clickSubmit();
 
         String actualName = formPom.getTableDataByLabel("Student Name");
         Assert.assertEquals(actualName, FIRST_NAME + " " + LAST_NAME);
-
-        System.out.println("Finish test");
-
     }
 
     @AfterMethod
     public void afterMethod() {
-        if (driver != null) driver.quit();
+        if (driver != null) {
+            driver.quit();
+        }
     }
 }
