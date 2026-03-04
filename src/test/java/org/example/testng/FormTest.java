@@ -14,16 +14,16 @@ public class FormTest {
 
     static public WebDriver driver;
     static public String URL = "https://demoqa.com/";
-    static public String FIRST_NAME = "Anatolie";
-    static public String LAST_NAME = "Sneg";
-    static public String EMAIL = "example@gmail.com";
+    static public String FIRST_NAME = "kiril";
+    static public String LAST_NAME = "bozbeq";
+    static public String EMAIL = "kbozb@gmail.com";
     static public String GENDER = "Male";
     static public String NUMBER = "0123456789";
-    static public String DATE = "21 Apr 2001";
+    static public String DATE = "21 Jul 1995";
     static public String SUBJECT = "Maths";
     static public String STATE = "Rajasthan";
     static public String CITY = "Jaipur";
-    static public String HOBBY = "Sports";
+    static public String HOBBY = "Maths";
 
     @BeforeMethod
     public void beforeMethod() throws MalformedURLException {
