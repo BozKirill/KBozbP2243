@@ -63,6 +63,7 @@ public class FormTest {
         Assert.assertEquals(actualName, FIRST_NAME + " " + LAST_NAME);
 
         System.out.println("Finish test");
+
     }
 
     @AfterMethod
