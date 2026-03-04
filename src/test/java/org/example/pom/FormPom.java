@@ -8,8 +8,8 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 
 public class FormPom {
 
-    static public WebDriver driver;
-    static public JavascriptExecutor js;
+    public static WebDriver driver;
+    public static JavascriptExecutor js;
 
     @FindBy(xpath = "//*[text()='Forms']")
     WebElement forms;
@@ -51,31 +51,52 @@ public class FormPom {
     }
 
     public String getTableDataByLabel(String labelParam) {
-        WebElement data = driver.findElement(By.xpath("//table//*[text()='" + labelParam  + "']/../*[2]"));
+        WebElement data = driver.findElement(By.xpath("//table//*[normalize-space(text())='" + labelParam + "']/../*[2]"));
         return data.getText();
     }
 
     public void clickSubmit() {
-        submit.click();
+        scrollToElement(submit);
+        Utils.explicitWait(driver, ExpectedConditions.elementToBeClickable(submit), 10);
+        safeClick(submit);
     }
 
     public void setCity(String cityParam) {
-        city.click();
-        WebElement ddSCity = city.findElement(By.xpath("//*[text()='" + cityParam  + "']"));
-        ddSCity.click();
+        scrollToElement(city);
+        safeClick(city);
+
+        By option = By.xpath("//div[@id='react-select-4-listbox']//*[normalize-space()='" + cityParam + "']");
+        Utils.explicitWait(driver, ExpectedConditions.visibilityOfElementLocated(option), 10);
+
+        WebElement ddCity = driver.findElement(option);
+        safeClick(ddCity);
     }
 
     public void setState(String stateParam) {
-        state.click();
-        WebElement ddState = state.findElement(By.xpath("//*[text()='" + stateParam  + "']"));
-//        Utils.explicitWait(driver, ExpectedConditions.elementToBeClickable(ddState), 10);
-        pause(1000);
-        ddState.click();
+        scrollToElement(state);
+        safeClick(state);
+
+        By option = By.xpath("//div[@id='react-select-3-listbox']//*[normalize-space()='" + stateParam + "']");
+        Utils.explicitWait(driver, ExpectedConditions.visibilityOfElementLocated(option), 10);
+
+        WebElement ddState = driver.findElement(option);
+        safeClick(ddState);
     }
 
+    /**
+     * FIX:
+     * - На DemoQA нет "Maths"
+     * - Кликаем по LABEL (input спрятан)
+     * - Используем normalize-space() чтобы не зависеть от пробелов
+     */
     public void setHobby(String hobbyParam) {
-        WebElement hobby = driver.findElement(By.xpath("//*[@id='hobbiesWrapper']//label[text()='" + hobbyParam + "']/../input"));
-        hobby.sendKeys(" ");
+        By hobbyLabel = By.xpath("//*[@id='hobbiesWrapper']//label[normalize-space()='" + hobbyParam + "']");
+        Utils.explicitWait(driver, ExpectedConditions.visibilityOfElementLocated(hobbyLabel), 10);
+
+        WebElement label = driver.findElement(hobbyLabel);
+        scrollToElement(label);
+        Utils.explicitWait(driver, ExpectedConditions.elementToBeClickable(label), 10);
+        safeClick(label);
     }
 
     public void setSubject(String subjectParam) {
@@ -95,8 +116,9 @@ public class FormPom {
     }
 
     public void setGender(String genderParam) {
-        WebElement gender = driver.findElement(By.xpath("//*[@id='genterWrapper']//label[text()='" + genderParam + "']"));
-        gender.click();
+        WebElement gender = driver.findElement(By.xpath("//*[@id='genterWrapper']//label[normalize-space()='" + genderParam + "']"));
+        scrollToElement(gender);
+        safeClick(gender);
     }
 
     public void setEmail(String emailParam) {
@@ -116,11 +138,11 @@ public class FormPom {
 
     public void clickPracticeForm() {
         Utils.explicitWait(driver, ExpectedConditions.visibilityOf(practiceForm), 10);
-        practiceForm.click();
+        safeClick(practiceForm);
     }
 
     public void clickForms() {
-        forms.click();
+        safeClick(forms);
     }
 
     public void pause(int ms) {
@@ -132,18 +154,32 @@ public class FormPom {
     }
 
     public void scrollToElement(WebElement element) {
-        JavascriptExecutor js = (JavascriptExecutor) driver;
-        js.executeScript("arguments[0].scrollIntoView(true);", element);
+        js.executeScript("arguments[0].scrollIntoView({block:'center'});", element);
+    }
+
+    private void safeClick(WebElement element) {
+        try {
+            element.click();
+        } catch (ElementClickInterceptedException e) {
+            js.executeScript("arguments[0].click();", element);
+        }
     }
 
     public void closeAdvert() {
         try {
-            js.executeScript("var elem = document.evaluate(\"//*[@id='adplus-anchor']\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;" +
-                    "elem.parentNode.removeChild(elem);");
+            js.executeScript(
+                    "var elem = document.evaluate(\"//*[@id='adplus-anchor']\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;" +
+                            "if(elem){elem.parentNode.removeChild(elem);}"
+            );
         } catch (Exception ignored) {}
         try {
-            js.executeScript("var elem = document.evaluate(\"//footer\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;" +
-                    "elem.parentNode.removeChild(elem);");
+            js.executeScript(
+                    "var elem = document.evaluate(\"//footer\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;" +
+                            "if(elem){elem.parentNode.removeChild(elem);}"
+            );
+        } catch (Exception ignored) {}
+        try {
+            js.executeScript("var banner=document.querySelector('#fixedban'); if(banner){banner.remove();}");
         } catch (Exception ignored) {}
     }
 }
