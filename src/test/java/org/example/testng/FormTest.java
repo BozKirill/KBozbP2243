@@ -20,7 +20,7 @@ public class FormTest {
     static public String GENDER = "Male";
     static public String NUMBER = "0123456789";
     static public String DATE = "21 Jul 1995";
-    static public String SUBJECT = "Maths";
+    static public String SUBJECT = "Football";
     static public String STATE = "Rajasthan";
     static public String CITY = "Jaipur";
     static public String HOBBY = "Maths";
